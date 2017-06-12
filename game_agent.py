@@ -34,8 +34,8 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    # number_of_my_moves - number_of_opponent_moves
+    return float(len(game.get_legal_moves(player) - game.get_legal_moves(game.get_opponent(player))))
 
 
 def custom_score_2(game, player):
@@ -212,9 +212,52 @@ class MinimaxPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        # default move
+        move = (-1, -1)
 
+        # get list of legal moves
+        legal_moves = game.get_legal_moves()
+        if len(legal_moves) == 0 :
+            return move
+
+        _, move = max((self.min_value(game, m, depth - 1), m) for m in legal_moves)
+        return move
+
+
+    def min_value(self, game, move, depth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        score = float("inf")
+        game_clone = game.forecast_move(move)
+        legal_moves = game_clone.get_legal_moves()
+
+        if len(legal_moves) == 0:
+            return game_clone.utility(game_clone.active_player)
+
+        if depth == 0:
+            return self.score(game_clone, self)
+
+        for m in legal_moves:
+            score = min(score, self.max_value(game_clone, m, depth - 1))
+        return score
+
+    def max_value(self, game, move, depth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        score = float("-inf")
+        game_clone = game.forecast_move(move)
+
+        legal_moves = game_clone.get_legal_moves()
+        if len(legal_moves) == 0:
+            return game_clone.utility(game_clone.active_player)
+        if depth == 0:
+            return self.score(game_clone, self)
+
+        for p in legal_moves:
+            score = max(score, self.min_value(game_clone, p, depth - 1))
+        return score
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
