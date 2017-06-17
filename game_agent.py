@@ -35,7 +35,17 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # number_of_my_moves - number_of_opponent_moves
-    return float(len(game.get_legal_moves(player) - game.get_legal_moves(game.get_opponent(player))))
+
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    my_moves = len(game.get_legal_moves(player))
+    opponent_moves = len(game.get_legal_moves(game.get_opponent(player)))
+
+    return float(my_moves - opponent_moves)
 
 
 def custom_score_2(game, player):
@@ -60,9 +70,80 @@ def custom_score_2(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
 
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    border_cells = [(0, i) for i in range(game.width)] + [(game.height - 1, i) for i in range(game.width)] \
+                   + [(i, 0) for i in range(game.height)] + [(i, game.width - 1) for i in range(game.height)]
+
+    corner_cells = [(0, 0), (0, game.width - 1), (game.height - 1, game.width - 1), (game.height - 1, 0)]
+
+    my_moves = game.get_legal_moves(player)
+    opponent_moves = game.get_legal_moves(game.get_opponent(player))
+
+    used_space = percentage_used(game)
+
+    my_corner_score = 0
+    my_border_score = 0
+
+    opponent_corner_score = 0
+    opponent_border_score = 0
+
+    for move in my_moves:
+
+        if used_space < 60:
+            if move in corner_cells:
+                my_corner_score += 15
+            elif move in border_cells:
+                my_corner_score += 10
+            else:
+                my_corner_score += 10
+        else:
+            if move in corner_cells:
+                my_border_score -= 40
+            elif move in border_cells:
+                my_border_score -= 20
+            else:
+                my_border_score += 5
+
+    for move in opponent_moves:
+        if used_space < 60:
+            if move in corner_cells:
+                opponent_corner_score += 15
+            elif move in border_cells:
+                opponent_corner_score += 10
+            else:
+                opponent_corner_score += 10
+        else:
+            if move in corner_cells:
+                opponent_border_score -= 40
+            elif move in border_cells:
+                opponent_border_score -= 20
+            else:
+                opponent_border_score += 5
+
+    border_score = my_border_score - opponent_border_score
+    corner_score = my_corner_score - opponent_corner_score
+
+    return 0.3 * border_score - 0.7 * corner_score
+
+
+def percentage_used(game):
+    """
+    Parameters
+    ----------
+        game: 'isolation.Board'
+    Returns
+    -------
+        percentage of used space
+    """
+    total = game.height * game.width
+    empty = len(game.get_blank_spaces())
+    return (float(empty) / total) * 100
 
 def custom_score_3(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -86,9 +167,17 @@ def custom_score_3(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
 
+    if game.is_winner(player):
+        return float("inf")
+
+    #return float(len(game.get_legal_moves(player)) - 3 * len(game.get_legal_moves(game.get_opponent(player))))
+
+    my_moves = len(game.get_legal_moves(player))
+    max_moves = 8
+    return float(max_moves - my_moves)
 
 class IsolationPlayer:
     """Base class for minimax and alphabeta agents -- this class is never
@@ -112,6 +201,7 @@ class IsolationPlayer:
         positive value large enough to allow the function to return before the
         timer expires.
     """
+
     def __init__(self, search_depth=3, score_fn=custom_score, timeout=10.):
         self.search_depth = search_depth
         self.score = score_fn
@@ -217,14 +307,38 @@ class MinimaxPlayer(IsolationPlayer):
 
         # get list of legal moves
         legal_moves = game.get_legal_moves()
-        if len(legal_moves) == 0 :
+        if len(legal_moves) == 0:
             return move
 
         _, move = max((self.min_value(game, m, depth - 1), m) for m in legal_moves)
         return move
 
-
     def min_value(self, game, move, depth):
+        """
+        Implements min_value function for minimax algorithm
+
+        Parameters
+        ----------
+        game : isolation.Board
+            An instance of the Isolation game `Board` class representing the
+            current game state
+
+        move : (int, int)
+            Move that we are making on game to evaluate
+
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+
+        Returns
+        -------
+        float
+            Evaluated score for this move on game
+            if current state is a terminal state, return utility of the current game
+            if depth = 0, the return self.score() on current state
+
+            otherwise, return min value of all possible moves from current state
+        """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
@@ -243,6 +357,32 @@ class MinimaxPlayer(IsolationPlayer):
         return score
 
     def max_value(self, game, move, depth):
+        """
+        Implements max_value function for minimax algorithm
+
+        Parameters
+        ----------
+        game : isolation.Board
+            An instance of the Isolation game `Board` class representing the
+            current game state
+
+        move : (int, int)
+            Move that we are making on game to evaluate
+
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+
+        Returns
+        -------
+        float
+            Evaluated score for this move on game
+            if current state is a terminal state, return utility of the current game
+            if depth = 0, the return self.score() on current state
+
+            otherwise, return max value of all possible moves from current state
+
+        """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
@@ -258,6 +398,7 @@ class MinimaxPlayer(IsolationPlayer):
         for p in legal_moves:
             score = max(score, self.min_value(game_clone, p, depth - 1))
         return score
+
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
@@ -297,8 +438,23 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        # Initialize the best move so that this function returns something
+        # in case the search fails due to timeout
+        best_move = (-1, -1)
+
+        try:
+            # The try/except block will automatically catch the exception
+            # raised when the timer is about to expire.
+            depth = 0
+            while True:
+                best_move = self.alphabeta(game, depth)
+                depth += 1
+
+        except SearchTimeout:
+            pass  # Handle any actions required after timeout as needed
+
+        # Return the best move from the last completed search iteration
+        return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -348,5 +504,106 @@ class AlphaBetaPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        _, move = self.max_value(game, depth)
+        return move
+
+    def min_value(self, game, depth, alpha=float("-inf"), beta=float("inf")):
+        """
+           Implements minvalue for depth limited minimax with alpha beta pruning
+
+           Parameters
+           ----------
+           game : isolation.Board
+               An instance of the Isolation game `Board` class representing the
+               current game state
+
+           depth : int
+               Depth is an integer representing the maximum number of plies to
+               search in the game tree before aborting
+
+           alpha : float
+               Alpha limits the lower bound of search on minimizing layers
+
+           beta : float
+               Beta limits the upper bound of search on maximizing layers
+
+           Returns
+           -------
+           (int, int)
+               The board coordinates of the best move found in the current search;
+               (-1, -1) if there are no legal moves
+
+        """
+
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        if game.utility(self) != 0:
+            return game.utility(self), (-1, -1)
+
+        if depth == 0:
+            return self.score(game, self), (-1, -1)
+
+        score = float("+inf")
+        move = (-1, -1)
+
+        for m in game.get_legal_moves():
+            tmp_score, tmp_move = self.max_value(game.forecast_move(m), depth - 1, alpha, beta)
+            score, move = min((score, move), (tmp_score, m), key=lambda k: k[0])
+
+            if score <= alpha:
+                return score, move
+
+            beta = min(score, beta)
+
+        return score, move
+
+    def max_value(self, game, depth, alpha=float("-inf"), beta=float("inf")):
+        """
+           Implements max_value for depth limited minimax with alpha beta pruning
+
+           Parameters
+           ----------
+           game : isolation.Board
+               An instance of the Isolation game `Board` class representing the
+               current game state
+
+           depth : int
+               Depth is an integer representing the maximum number of plies to
+               search in the game tree before aborting
+
+           alpha : float
+               Alpha limits the lower bound of search on minimizing layers
+
+           beta : float
+               Beta limits the upper bound of search on maximizing layers
+
+           Returns
+           -------
+           (int, int)
+               The board coordinates of the best move found in the current search;
+               (-1, -1) if there are no legal moves
+
+        """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        if game.utility(self) != 0:
+            return game.utility(self), (-1, -1)
+
+        if depth == 0:
+            return self.score(game, self), (-1, -1)
+
+        score = float("-inf")
+        move = (-1, -1)
+
+        for m in game.get_legal_moves():
+            tmp_score, tmp_move = self.min_value(game.forecast_move(m), depth - 1, alpha, beta)
+            score, move = max((score, move), (tmp_score, m), key=lambda k: k[0])
+
+            if score >= beta:
+                return score, move
+
+            alpha = max(score, alpha)
+
+        return score, move
