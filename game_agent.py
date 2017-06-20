@@ -2,7 +2,7 @@
 test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
-import random
+from random import random
 
 
 class SearchTimeout(Exception):
@@ -45,7 +45,7 @@ def custom_score(game, player):
     my_moves = len(game.get_legal_moves(player))
     opponent_moves = len(game.get_legal_moves(game.get_opponent(player)))
 
-    return float(my_moves - opponent_moves)
+    return float(my_moves - 1.5 * opponent_moves)
 
 
 def custom_score_2(game, player):
@@ -77,73 +77,15 @@ def custom_score_2(game, player):
     if game.is_winner(player):
         return float("inf")
 
-    border_cells = [(0, i) for i in range(game.width)] + [(game.height - 1, i) for i in range(game.width)] \
-                   + [(i, 0) for i in range(game.height)] + [(i, game.width - 1) for i in range(game.height)]
+    empty_spaces = len(game.get_blank_spaces())
+    my_moves = len(game.get_legal_moves(player))
+    opponent_moves = len(game.get_legal_moves(game.get_opponent(player)))
 
-    corner_cells = [(0, 0), (0, game.width - 1), (game.height - 1, game.width - 1), (game.height - 1, 0)]
-
-    my_moves = game.get_legal_moves(player)
-    opponent_moves = game.get_legal_moves(game.get_opponent(player))
-
-    used_space = percentage_used(game)
-
-    my_corner_score = 0
-    my_border_score = 0
-
-    opponent_corner_score = 0
-    opponent_border_score = 0
-
-    for move in my_moves:
-
-        if used_space < 60:
-            if move in corner_cells:
-                my_corner_score += 15
-            elif move in border_cells:
-                my_corner_score += 10
-            else:
-                my_corner_score += 10
-        else:
-            if move in corner_cells:
-                my_border_score -= 40
-            elif move in border_cells:
-                my_border_score -= 20
-            else:
-                my_border_score += 5
-
-    for move in opponent_moves:
-        if used_space < 60:
-            if move in corner_cells:
-                opponent_corner_score += 15
-            elif move in border_cells:
-                opponent_corner_score += 10
-            else:
-                opponent_corner_score += 10
-        else:
-            if move in corner_cells:
-                opponent_border_score -= 40
-            elif move in border_cells:
-                opponent_border_score -= 20
-            else:
-                opponent_border_score += 5
-
-    border_score = my_border_score - opponent_border_score
-    corner_score = my_corner_score - opponent_corner_score
-
-    return 0.3 * border_score - 0.7 * corner_score
+    return float(my_moves-opponent_moves)/float(empty_spaces)
 
 
-def percentage_used(game):
-    """
-    Parameters
-    ----------
-        game: 'isolation.Board'
-    Returns
-    -------
-        percentage of used space
-    """
-    total = game.height * game.width
-    empty = len(game.get_blank_spaces())
-    return (float(empty) / total) * 100
+
+
 
 def custom_score_3(game, player):
     """Calculate the heuristic value of a game state from the point of view
